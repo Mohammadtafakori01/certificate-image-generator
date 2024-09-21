@@ -51,7 +51,7 @@ def generate_certificate(request: CertificateRequest):
             bbox = draw.textbbox((0, 0), bidi_text, font=font)
             text_width = bbox[2] - bbox[0]
             adjusted_x = item.position[0] - text_width  # Adjust for RTL
-            draw.text((adjusted_x, item.position[1]), bidi_text, font=font, fill="black")
+            draw.text((adjusted_x, item.position[1]), reshaped_text, font=font, fill="black")
 
         # Save the image with a unique filename
         image_id = uuid.uuid4().hex
