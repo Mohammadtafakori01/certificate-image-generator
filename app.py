@@ -41,7 +41,7 @@ def generate_certificate(request: CertificateRequest):
         # Load fonts
         fonts = {}
         for key, item in request.texts.items():
-            font_file = "./nazaninbold.ttf" if "bold" in key.lower() else "./nazanin.ttf"
+            font_file = "nazaninbold.ttf" if "bold" in key.lower() else "nazanin.ttf"
             font_path = font_file
             if not os.path.exists(font_path):
                 raise HTTPException(status_code=500, detail=f"Font file {font_path} not found.")
