@@ -18,7 +18,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Mount the output directory to serve static files
 app.mount("/images", StaticFiles(directory=OUTPUT_DIR), name="images")
 
-# Define the request model
+# Define the request models
 class TextItem(BaseModel):
     content: str
     font_size: int = Field(..., gt=0)
@@ -35,23 +35,19 @@ def generate_certificate(request: CertificateRequest):
         background_path = "background.jpg"
         if not os.path.exists(background_path):
             raise HTTPException(status_code=500, detail="Background image not found.")
+
         background = Image.open(background_path).convert("RGB")
         draw = ImageDraw.Draw(background)
 
-        # Load fonts
-        fonts = {}
+        # Load fonts and draw each text
         for key, item in request.texts.items():
             font_file = "nazaninbold.ttf" if "bold" in key.lower() else "nazanin.ttf"
-            font_path = font_file
-            if not os.path.exists(font_path):
-                raise HTTPException(status_code=500, detail=f"Font file {font_path} not found.")
-            fonts[key] = ImageFont.truetype(font_path, item.font_size)
+            if not os.path.exists(font_file):
+                raise HTTPException(status_code=500, detail=f"Font file {font_file} not found.")
 
-        # Process and draw each text
-        for key, item in request.texts.items():
+            font = ImageFont.truetype(font_file, item.font_size)
             reshaped_text = arabic_reshaper.reshape(item.content)
             bidi_text = get_display(reshaped_text)
-            font = fonts[key]
             bbox = draw.textbbox((0, 0), bidi_text, font=font)
             text_width = bbox[2] - bbox[0]
             adjusted_x = item.position[0] - text_width  # Adjust for RTL
@@ -65,7 +61,6 @@ def generate_certificate(request: CertificateRequest):
 
         # Construct the image URL
         image_url = f"/images/{output_filename}"
-
         return JSONResponse(content={"image_url": image_url})
 
     except Exception as e:
