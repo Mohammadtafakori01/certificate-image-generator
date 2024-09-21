@@ -35,27 +35,42 @@ def generate_certificate(request: CertificateRequest):
         background_path = "./background.jpg"
         if not os.path.exists(background_path):
             raise HTTPException(status_code=500, detail="Background image not found.")
+        
         background = Image.open(background_path).convert("RGB")
         draw = ImageDraw.Draw(background)
 
         # Load fonts
         fonts = {}
         for key, item in request.texts.items():
-            font_file = "./nazaninbold.ttf" if "bold" in key.lower() else "./nazanin.ttf"
-            font_path = font_file
-            if not os.path.exists(font_path):
-                raise HTTPException(status_code=500, detail=f"Font file {font_path} not found.")
-            fonts[key] = ImageFont.truetype(font_path, item.font_size)
+            # Choose font based on whether it's bold or not
+            if "bold" in key.lower():
+                font_file = "./nazaninbold.ttf"  # Ensure this font supports Persian
+            else:
+                font_file = "./nazanin.ttf"      # Ensure this font supports Persian
+            
+            if not os.path.exists(font_file):
+                raise HTTPException(status_code=500, detail=f"Font file {font_file} not found.")
+            
+            fonts[key] = ImageFont.truetype(font_file, item.font_size)
 
         # Process and draw each text
         for key, item in request.texts.items():
+            # Reshape and reorder the text for RTL
             reshaped_text = arabic_reshaper.reshape(item.content)
             bidi_text = get_display(reshaped_text)
+
             font = fonts[key]
-            bbox = draw.textbbox((0, 0), bidi_text, font=font)
-            text_width = bbox[2] - bbox[0]
-            adjusted_x = item.position[0] - text_width  # Adjust for RTL
-            draw.text((adjusted_x, item.position[1]), bidi_text, font=font, fill="black")
+            
+            # Calculate text size
+            text_width, text_height = draw.textsize(bidi_text, font=font)
+
+            x, y = item.position
+
+            # Adjust x-coordinate for RTL by subtracting text width
+            adjusted_x = x - text_width
+
+            # Draw the text onto the image
+            draw.text((adjusted_x, y), bidi_text, font=font, fill="black")
 
         # Save the image with a unique filename
         image_id = uuid.uuid4().hex
@@ -68,5 +83,9 @@ def generate_certificate(request: CertificateRequest):
 
         return JSONResponse(content={"image_url": image_url})
 
+    except HTTPException as he:
+        # Re-raise HTTP exceptions to be handled by FastAPI
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Catch-all for other exceptions
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
